@@ -2,4 +2,4 @@ jdk:
   - openjdk17
 
 install:
-  - ./gradlew :networklib:assembleRelease :networklib:publishMavenJavaPublicationToMavenLocal
+  - ./gradlew :networklib:bundleReleaseAar :networklib:publishMavenJavaPublicationToMavenLocal

@@ -94,6 +94,11 @@ publishing {
     }
 }
 
+// 确保发布任务在AAR构建任务之后执行
+tasks.named('publishMavenJavaPublicationToMavenLocal') {
+    mustRunAfter tasks.named('bundleReleaseAar')
+}
+
 // ========== JitPack 辅助任务 ==========
 task printPublishingInfo {
     group = 'help'
