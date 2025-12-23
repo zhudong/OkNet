@@ -1,0 +1,119 @@
+plugins {
+    id 'com.android.library'
+    id 'maven-publish'
+}
+
+android {
+    namespace 'com.fyb.networklib'
+    compileSdk 34
+
+    defaultConfig {
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Android支持库
+    implementation libs.appcompat
+    implementation 'com.google.android.material:material:1.9.0'
+
+    // 网络请求相关依赖（使用api确保传递依赖）
+    api 'com.lzy.net:okgo:3.0.4'
+    api 'com.lzy.net:okserver:2.0.5'
+    api 'com.google.code.gson:gson:2.8.1'
+
+    // 测试相关依赖
+    testImplementation libs.junit
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
+}
+
+// ========== JitPack 发布配置 ==========
+
+// 从 gradle.properties 读取版本信息
+def libraryVersion = android.defaultConfig.versionName
+def libraryGroupId = 'com.fyb'
+def libraryArtifactId = 'networklib'
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = libraryGroupId
+            artifactId = libraryArtifactId
+            version = libraryVersion
+
+            // 发布 AAR 文件
+            artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")
+
+            // POM 配置
+            pom {
+                name = libraryArtifactId
+                description = 'Network library for Android with OkGo and OkServer'
+                url = 'https://github.com/zhudong/OkNet'
+
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id = 'zhudong'
+                        name = 'zhudong'
+                        email = 'zhudong1987@gmail.com'
+                    }
+                }
+
+                scm {
+                    connection = 'scm:git:git://github.com/zhudong/OkNet.git'
+                    developerConnection = 'scm:git:ssh://github.com:zhudong/OkNet.git'
+                    url = 'https://github.com/zhudong/OkNet'
+                }
+            }
+        }
+    }
+}
+
+// ========== JitPack 辅助任务 ==========
+task printPublishingInfo {
+    group = 'help'
+    description = 'Prints publishing configuration information'
+
+    doLast {
+        println "=== JitPack Publishing Configuration ==="
+        println "Group ID:     ${libraryGroupId}"
+        println "Artifact ID:  ${libraryArtifactId}"
+        println "Version:      ${libraryVersion}"
+        println ""
+        println "=== JitPack Repository ==="
+        println "Repository:   https://jitpack.io"
+        println ""
+        println "=== Commands ==="
+        println "./gradlew assembleRelease          - Build the library"
+        println "./gradlew publishToMavenLocal      - Publish to local Maven repository"
+        println "./gradlew printPublishingInfo       - Show this information"
+        println ""
+        println "=== JitPack Usage ==="
+        println "implementation 'com.github.zhudong:OkNet:${libraryVersion}'"
+    }
+}

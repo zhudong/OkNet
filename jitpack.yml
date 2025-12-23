@@ -1,0 +1,8 @@
+jdk:
+  - openjdk11
+
+before_install:
+  - ./gradlew :networklib:assembleRelease
+
+install:
+  - ./gradlew :networklib:publishMavenJavaPublicationToMavenLocal
