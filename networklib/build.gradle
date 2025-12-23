@@ -100,6 +100,22 @@ publishing {
                     url = 'https://github.com/zhudong/OkNet'
                 }
             }
+
+            // 添加依赖到 POM 文件
+            pom.withXml {
+                def dependenciesNode = asNode().appendNode('dependencies')
+
+                // 添加所有 api 依赖到 POM
+                configurations.api.allDependencies.each { dep ->
+                    if (dep.group != null && dep.name != null && !dep.name.contains("unspecified")) {
+                        def dependencyNode = dependenciesNode.appendNode('dependency')
+                        dependencyNode.appendNode('groupId', dep.group)
+                        dependencyNode.appendNode('artifactId', dep.name)
+                        dependencyNode.appendNode('version', dep.version)
+                        dependencyNode.appendNode('scope', 'compile')
+                    }
+                }
+            }
         }
     }
 }
