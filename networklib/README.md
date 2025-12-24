@@ -5,10 +5,9 @@
 ## 功能特性
 
 - **完全封装OkGo**：提供OkGo所有方法的统一接口，无需直接依赖OkGo
-- **智能初始化**：自动处理OkGo的初始化和配置
-- **Token自动注入**：支持自动Token注入机制
+- **一键初始化**：在Application中只需一行代码完成所有初始化
 - **完整的HTTP方法支持**：GET, POST, PUT, DELETE, HEAD, OPTIONS, PATCH, TRACE
-- **灵活的配置选项**：支持自定义OkHttpClient、缓存、重试等
+- **灵活的配置选项**：支持自定义OkHttpClient、缓存、重试、全局参数等
 - **请求取消功能**：支持按标签取消请求或取消所有请求
 - **传递依赖**：核心依赖自动传递，无需手动添加
 
@@ -42,15 +41,8 @@ public class MyAPP extends Application {
     public void onCreate() {
         super.onCreate();
 
-        // 初始化NetworkApi（内部自动初始化OkGo）
-        NetworkApi.getInstance()
-            .init(this)
-            .setTokenProvider(new TokenProvider() {
-                @Override
-                public String getAccessToken() {
-                    return AccountManager.getInstance().getAccessToken();
-                }
-            });
+        // 初始化NetworkApi（内部自动初始化OkGo并设置默认配置）
+        NetworkApi.getInstance().init(this);
     }
 }
 ```
@@ -353,8 +345,8 @@ NetworkLib采用`api`配置声明核心依赖，确保所有依赖都会自动�
 
 ## 注意事项
 
-1. **初始化**：必须在Application中调用`NetworkApi.getInstance().init(this)`
-2. **TokenProvider**：建议设置TokenProvider以支持自动Token注入
+1. **初始化**：必须在Application中调用`NetworkApi.getInstance().init(this)`，内部会自动初始化OkGo
+2. **Token处理**：如果需要Token验证，可以在请求时手动添加headers或使用自定义回调
 3. **请求标签**：tag用于取消请求，建议使用Activity或Fragment实例作为tag
 4. **响应处理**：BaseEntity的success判断基于code == 2000，可根据实际情况修改
 5. **线程安全**：所有NetworkApi方法都是线程安全的

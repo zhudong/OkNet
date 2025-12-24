@@ -5,8 +5,11 @@ import android.content.Context;
 import android.os.Handler;
 
 import com.lzy.okgo.OkGo;
+import com.lzy.okgo.cache.CacheEntity;
 import com.lzy.okgo.cache.CacheMode;
 import com.lzy.okgo.cookie.CookieJarImpl;
+import com.lzy.okgo.cookie.store.SPCookieStore;
+import com.lzy.okgo.interceptor.HttpLoggingInterceptor;
 import com.lzy.okgo.model.HttpHeaders;
 import com.lzy.okgo.model.HttpParams;
 import com.lzy.okgo.request.DeleteRequest;
@@ -19,9 +22,10 @@ import com.lzy.okgo.request.PutRequest;
 import com.lzy.okgo.request.TraceRequest;
 import com.lzy.okgo.request.base.Request;
 import com.fyb.networklib.util.JsonCallback;
-import com.fyb.networklib.util.TokenProvider;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 import okhttp3.OkHttpClient;
 
@@ -32,7 +36,6 @@ import okhttp3.OkHttpClient;
 public class NetworkApi {
 
     private static NetworkApi instance;
-    private TokenProvider tokenProvider;
 
     private NetworkApi() {
     }
@@ -50,20 +53,40 @@ public class NetworkApi {
 
     /**
      * 初始化NetworkApi（必须在Application中调用）
+     * 内部自动初始化OkGo并设置默认配置
      * @param app Application实例
      * @return NetworkApi实例
      */
     public NetworkApi init(Application app) {
-        OkGo.getInstance().init(app);
+        initOkGo(app);
         return this;
     }
 
     /**
-     * 设置Token提供者
-     * @param tokenProvider Token提供者
+     * 初始化OkGo并设置默认配置
      */
-    public void setTokenProvider(TokenProvider tokenProvider) {
-        this.tokenProvider = tokenProvider;
+    private void initOkGo(Application application) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder();
+
+        // Logging interceptor
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkGo");
+        loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.BODY);
+        loggingInterceptor.setColorLevel(Level.INFO);
+        builder.addInterceptor(loggingInterceptor);
+
+        // Global timeout
+        builder.readTimeout(OkGo.DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
+        builder.writeTimeout(OkGo.DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
+        builder.connectTimeout(OkGo.DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
+
+        // Cookie management
+        builder.cookieJar(new CookieJarImpl(new SPCookieStore(application)));
+
+        OkGo.getInstance().init(application)
+                .setOkHttpClient(builder.build())
+                .setCacheMode(CacheMode.NO_CACHE)
+                .setCacheTime(CacheEntity.CACHE_NEVER_EXPIRE)
+                .setRetryCount(3);
     }
 
     /**
@@ -282,6 +305,8 @@ public class NetworkApi {
 
     // ==================== 兼容性方法 ====================
 
+    // ==================== 兼容性方法 ====================
+
     /**
      * POST请求 - 使用JSON格式（兼容旧版本）
      * @param url 请求地址
@@ -293,11 +318,10 @@ public class NetworkApi {
      */
     public <T> Request<T, ? extends Request> postJson(String url, String jsonBody,
                                                        JsonCallback<T> callback, Object tag) {
-        JsonCallback<T> jsonCallback = createCallback(callback);
         Request<T, ? extends Request> request = OkGo.<T>post(url)
                 .tag(tag)
                 .upJson(jsonBody);
-        request.execute(jsonCallback);
+        request.execute(callback);
         return request;
     }
 
@@ -312,11 +336,10 @@ public class NetworkApi {
      */
     public <T> Request<T, ? extends Request> post(String url, Map<String, String> params,
                                                    JsonCallback<T> callback, Object tag) {
-        JsonCallback<T> jsonCallback = createCallback(callback);
         Request<T, ? extends Request> request = OkGo.<T>post(url)
                 .tag(tag)
                 .params(params);
-        request.execute(jsonCallback);
+        request.execute(callback);
         return request;
     }
 
@@ -331,14 +354,13 @@ public class NetworkApi {
      */
     public <T> Request<T, ? extends Request> get(String url, Map<String, String> params,
                                                  JsonCallback<T> callback, Object tag) {
-        JsonCallback<T> jsonCallback = createCallback(callback);
         Request<T, ? extends Request> request = OkGo.<T>get(url).tag(tag);
         if (params != null && !params.isEmpty()) {
             for (Map.Entry<String, String> entry : params.entrySet()) {
                 request.params(entry.getKey(), entry.getValue());
             }
         }
-        request.execute(jsonCallback);
+        request.execute(callback);
         return request;
     }
     
@@ -386,14 +408,5 @@ public class NetworkApi {
         cancelTag(tag);
     }
 
-    /**
-     * 创建带Token的回调
-     */
-    private <T> JsonCallback<T> createCallback(JsonCallback<T> callback) {
-        if (callback != null && tokenProvider != null) {
-            callback.setTokenProvider((JsonCallback.TokenProvider) tokenProvider);
-        }
-        return callback;
-    }
 }
 
