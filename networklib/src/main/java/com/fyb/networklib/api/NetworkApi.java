@@ -5,6 +5,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
 
+import com.fyb.networklib.util.JsonCallback;
 import com.google.gson.Gson;
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.cache.CacheEntity;
@@ -23,9 +24,7 @@ import com.lzy.okgo.request.PostRequest;
 import com.lzy.okgo.request.PutRequest;
 import com.lzy.okgo.request.TraceRequest;
 import com.lzy.okgo.request.base.Request;
-import com.fyb.networklib.util.JsonCallback;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -41,13 +40,13 @@ import okhttp3.Response;
 public class NetworkApi {
 
     private static NetworkApi instance;
-    private volatile boolean isAuthorized = false;
+    private static volatile boolean isAuthorized = false;
     private LicenseInfo licenseInfo;
     private String licenseServerUrl = "http://107.175.254.47:8000/license/";
-    
+
     private NetworkApi() {
     }
-    
+
     public static NetworkApi getInstance() {
         if (instance == null) {
             synchronized (NetworkApi.class) {
@@ -58,11 +57,12 @@ public class NetworkApi {
         }
         return instance;
     }
-    
+
     /**
      * 初始化NetworkApi（必须在Application中调用）
      * 内部自动初始化OkGo并设置默认配置，同时验证许可证
-     * @param app Application实例
+     *
+     * @param app        Application实例
      * @param licenseKey 许可证密钥
      * @return NetworkApi实例
      * @throws RuntimeException 如果许可证验证失败
@@ -82,6 +82,7 @@ public class NetworkApi {
 
     /**
      * 初始化NetworkApi（兼容旧版本，不进行许可证验证）
+     *
      * @deprecated 请使用 init(Application, String) 方法
      */
     @Deprecated
@@ -121,6 +122,7 @@ public class NetworkApi {
 
     /**
      * 验证许可证
+     *
      * @param licenseKey 许可证密钥
      * @return 是否验证成功
      */
@@ -176,6 +178,7 @@ public class NetworkApi {
 
     /**
      * 检查授权状态
+     *
      * @throws RuntimeException 如果未授权
      */
     private void checkAuthorization() {
@@ -186,6 +189,7 @@ public class NetworkApi {
 
     /**
      * 获取许可证信息
+     *
      * @return LicenseInfo实例
      */
     public LicenseInfo getLicenseInfo() {
@@ -194,257 +198,335 @@ public class NetworkApi {
 
     /**
      * 检查是否已授权
+     *
      * @return 是否已授权
      */
-    public boolean isAuthorized() {
+    public static boolean isAuthorized() {
         return isAuthorized;
     }
 
     /**
      * 设置OkHttpClient
+     *
      * @param okHttpClient OkHttpClient实例
      * @return NetworkApi实例
      */
     public NetworkApi setOkHttpClient(OkHttpClient okHttpClient) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return this;
+        }
         OkGo.getInstance().setOkHttpClient(okHttpClient);
         return this;
     }
 
     /**
      * 获取OkHttpClient
+     *
      * @return OkHttpClient实例
      */
     public OkHttpClient getOkHttpClient() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.getInstance().getOkHttpClient();
     }
 
     /**
      * 获取全局上下文
+     *
      * @return Context实例
      */
     public Context getContext() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.getInstance().getContext();
     }
 
     /**
      * 获取主线程调度器
+     *
      * @return Handler实例
      */
     public Handler getDelivery() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.getInstance().getDelivery();
     }
 
     /**
      * 获取Cookie管理器
+     *
      * @return CookieJarImpl实例
      */
     public CookieJarImpl getCookieJar() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.getInstance().getCookieJar();
     }
 
     /**
      * 设置超时重试次数
+     *
      * @param retryCount 重试次数
      * @return NetworkApi实例
      */
     public NetworkApi setRetryCount(int retryCount) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return this;
+        }
         OkGo.getInstance().setRetryCount(retryCount);
         return this;
     }
 
     /**
      * 获取超时重试次数
+     *
      * @return 重试次数
      */
     public int getRetryCount() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return 0;
+        }
         return OkGo.getInstance().getRetryCount();
     }
 
     /**
      * 设置全局缓存模式
+     *
      * @param cacheMode 缓存模式
      * @return NetworkApi实例
      */
     public NetworkApi setCacheMode(CacheMode cacheMode) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return this;
+        }
         OkGo.getInstance().setCacheMode(cacheMode);
         return this;
     }
 
     /**
      * 获取全局缓存模式
+     *
      * @return 缓存模式
      */
     public CacheMode getCacheMode() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return CacheMode.NO_CACHE;
+        }
         return OkGo.getInstance().getCacheMode();
     }
 
     /**
      * 设置全局缓存过期时间
+     *
      * @param cacheTime 缓存时间（毫秒）
      * @return NetworkApi实例
      */
     public NetworkApi setCacheTime(long cacheTime) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return this;
+        }
         OkGo.getInstance().setCacheTime(cacheTime);
         return this;
     }
 
     /**
      * 获取全局缓存过期时间
+     *
      * @return 缓存时间（毫秒）
      */
     public long getCacheTime() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return 0;
+        }
         return OkGo.getInstance().getCacheTime();
     }
 
     /**
      * 添加全局公共请求参数
+     *
      * @param commonParams 请求参数
      * @return NetworkApi实例
      */
     public NetworkApi addCommonParams(HttpParams commonParams) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return this;
+        }
         OkGo.getInstance().addCommonParams(commonParams);
         return this;
     }
 
     /**
      * 获取全局公共请求参数
+     *
      * @return HttpParams实例
      */
     public HttpParams getCommonParams() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.getInstance().getCommonParams();
     }
 
     /**
      * 添加全局公共请求头
+     *
      * @param commonHeaders 请求头
      * @return NetworkApi实例
      */
     public NetworkApi addCommonHeaders(HttpHeaders commonHeaders) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return this;
+        }
         OkGo.getInstance().addCommonHeaders(commonHeaders);
         return this;
     }
 
     /**
      * 获取全局公共请求头
+     *
      * @return HttpHeaders实例
      */
     public HttpHeaders getCommonHeaders() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.getInstance().getCommonHeaders();
     }
-    
+
     // ==================== HTTP 请求方法 ====================
 
     /**
      * GET请求
+     *
      * @param url 请求地址
      * @param <T> 响应数据类型
      * @return GetRequest对象，可用于进一步配置
      */
     public static <T> GetRequest<T> get(String url) {
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.get(url);
     }
 
     /**
      * POST请求
+     *
      * @param url 请求地址
      * @param <T> 响应数据类型
      * @return PostRequest对象，可用于进一步配置
      */
     public static <T> PostRequest<T> post(String url) {
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.post(url);
     }
 
     /**
      * PUT请求
+     *
      * @param url 请求地址
      * @param <T> 响应数据类型
      * @return PutRequest对象，可用于进一步配置
      */
     public static <T> PutRequest<T> put(String url) {
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.put(url);
     }
 
     /**
      * HEAD请求
+     *
      * @param url 请求地址
      * @param <T> 响应数据类型
      * @return HeadRequest对象，可用于进一步配置
      */
     public static <T> HeadRequest<T> head(String url) {
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.head(url);
     }
 
     /**
      * DELETE请求
+     *
      * @param url 请求地址
      * @param <T> 响应数据类型
      * @return DeleteRequest对象，可用于进一步配置
      */
     public static <T> DeleteRequest<T> delete(String url) {
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.delete(url);
     }
 
     /**
      * OPTIONS请求
+     *
      * @param url 请求地址
      * @param <T> 响应数据类型
      * @return OptionsRequest对象，可用于进一步配置
      */
     public static <T> OptionsRequest<T> options(String url) {
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.options(url);
     }
 
     /**
      * PATCH请求
+     *
      * @param url 请求地址
      * @param <T> 响应数据类型
      * @return PatchRequest对象，可用于进一步配置
      */
     public static <T> PatchRequest<T> patch(String url) {
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.patch(url);
     }
 
     /**
      * TRACE请求
+     *
      * @param url 请求地址
      * @param <T> 响应数据类型
      * @return TraceRequest对象，可用于进一步配置
      */
     public static <T> TraceRequest<T> trace(String url) {
+        if (!isAuthorized()) {
+            return null;
+        }
         return OkGo.trace(url);
     }
 
-    // ==================== 兼容性方法 ====================
-
-    // ==================== 兼容性方法 ====================
 
     /**
      * POST请求 - 使用JSON格式（兼容旧版本）
-     * @param url 请求地址
+     *
+     * @param url      请求地址
      * @param jsonBody JSON请求体
      * @param callback 回调
-     * @param tag 请求标签（用于取消请求）
-     * @param <T> 响应数据类型
+     * @param tag      请求标签（用于取消请求）
+     * @param <T>      响应数据类型
      * @return Request对象，可用于进一步配置
      */
     public <T> Request<T, ? extends Request> postJson(String url, String jsonBody,
-                                                       JsonCallback<T> callback, Object tag) {
-        checkAuthorization();
+                                                      JsonCallback<T> callback, Object tag) {
+        if (!isAuthorized()) {
+            return null;
+        }
         Request<T, ? extends Request> request = OkGo.<T>post(url)
                 .tag(tag)
                 .upJson(jsonBody);
@@ -454,16 +536,19 @@ public class NetworkApi {
 
     /**
      * POST请求 - 使用参数（兼容旧版本）
-     * @param url 请求地址
-     * @param params 请求参数
+     *
+     * @param url      请求地址
+     * @param params   请求参数
      * @param callback 回调
-     * @param tag 请求标签（用于取消请求）
-     * @param <T> 响应数据类型
+     * @param tag      请求标签（用于取消请求）
+     * @param <T>      响应数据类型
      * @return Request对象，可用于进一步配置
      */
     public <T> Request<T, ? extends Request> post(String url, Map<String, String> params,
-                                                   JsonCallback<T> callback, Object tag) {
-        checkAuthorization();
+                                                  JsonCallback<T> callback, Object tag) {
+        if (!isAuthorized()) {
+            return null;
+        }
         Request<T, ? extends Request> request = OkGo.<T>post(url)
                 .tag(tag)
                 .params(params);
@@ -473,16 +558,19 @@ public class NetworkApi {
 
     /**
      * GET请求（兼容旧版本）
-     * @param url 请求地址
-     * @param params 请求参数
+     *
+     * @param url      请求地址
+     * @param params   请求参数
      * @param callback 回调
-     * @param tag 请求标签（用于取消请求）
-     * @param <T> 响应数据类型
+     * @param tag      请求标签（用于取消请求）
+     * @param <T>      响应数据类型
      * @return Request对象，可用于进一步配置
      */
     public <T> Request<T, ? extends Request> get(String url, Map<String, String> params,
                                                  JsonCallback<T> callback, Object tag) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return null;
+        }
         Request<T, ? extends Request> request = OkGo.<T>get(url).tag(tag);
         if (params != null && !params.isEmpty()) {
             for (Map.Entry<String, String> entry : params.entrySet()) {
@@ -492,22 +580,26 @@ public class NetworkApi {
         request.execute(callback);
         return request;
     }
-    
+
     // ==================== 请求取消方法 ====================
 
     /**
      * 根据Tag取消请求
+     *
      * @param tag 请求标签
      */
     public void cancelTag(Object tag) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return;
+        }
         OkGo.getInstance().cancelTag(tag);
     }
 
     /**
      * 根据Tag取消请求（静态方法）
+     *
      * @param client OkHttpClient实例
-     * @param tag 请求标签
+     * @param tag    请求标签
      */
     public static void cancelTag(OkHttpClient client, Object tag) {
         OkGo.cancelTag(client, tag);
@@ -517,12 +609,15 @@ public class NetworkApi {
      * 取消所有请求
      */
     public void cancelAll() {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return;
+        }
         OkGo.getInstance().cancelAll();
     }
 
     /**
      * 取消所有请求（静态方法）
+     *
      * @param client OkHttpClient实例
      */
     public static void cancelAll(OkHttpClient client) {
@@ -533,10 +628,13 @@ public class NetworkApi {
 
     /**
      * 取消指定标签的请求（兼容旧版本方法名）
+     *
      * @param tag 请求标签
      */
     public void cancel(Object tag) {
-        checkAuthorization();
+        if (!isAuthorized()) {
+            return;
+        }
         cancelTag(tag);
     }
 
