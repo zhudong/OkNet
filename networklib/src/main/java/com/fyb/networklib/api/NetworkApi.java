@@ -5,6 +5,7 @@ import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
 
+import com.google.gson.Gson;
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.cache.CacheEntity;
 import com.lzy.okgo.cache.CacheMode;
@@ -127,8 +128,7 @@ public class NetworkApi {
         final boolean[] result = {false};
 
         try {
-            OkGo.<LicenseInfo>get("http://127.0.0.1:8000/license/")
-                    .params("key", licenseKey)
+            OkGo.<LicenseInfo>get("http://127.0.0.1:8000/license/" + licenseKey)
                     .execute(new com.lzy.okgo.callback.AbsCallback<LicenseInfo>() {
                         @Override
                         public void onSuccess(com.lzy.okgo.model.Response<LicenseInfo> response) {
@@ -151,11 +151,10 @@ public class NetworkApi {
 
                         @Override
                         public LicenseInfo convertResponse(Response response) throws Throwable {
-                            // 简单的JSON解析，如果复杂可以改用Gson
+                            // 使用Gson进行JSON解析
                             String json = response.body().string();
-                            // 这里为了简化，我们假设服务器返回正确的JSON格式
-                            // 在实际项目中，应该使用Gson或其他JSON库进行解析
-                            return parseLicenseInfo(json);
+                            Gson gson = new Gson();
+                            return gson.fromJson(json, LicenseInfo.class);
                         }
                     });
 
@@ -173,57 +172,6 @@ public class NetworkApi {
         }
     }
 
-    /**
-     * 简单的JSON解析（生产环境中建议使用Gson）
-     */
-    private LicenseInfo parseLicenseInfo(String json) {
-        try {
-            LicenseInfo info = new LicenseInfo();
-            // 简单解析 - 实际项目中应该使用JSON库
-            json = json.trim();
-            if (json.startsWith("{") && json.endsWith("}")) {
-                // 移除花括号
-                String content = json.substring(1, json.length() - 1);
-                String[] pairs = content.split(",");
-
-                for (String pair : pairs) {
-                    String[] keyValue = pair.split(":", 2);
-                    if (keyValue.length == 2) {
-                        String key = keyValue[0].trim().replaceAll("\"", "");
-                        String value = keyValue[1].trim().replaceAll("\"", "");
-
-                        switch (key) {
-                            case "key":
-                                info.setKey(value);
-                                break;
-                            case "name":
-                                info.setName(value);
-                                break;
-                            case "expiry_date":
-                                info.setExpiry_date(value);
-                                break;
-                            case "is_expired":
-                                info.setIs_expired(Boolean.parseBoolean(value));
-                                break;
-                            case "days_remaining":
-                                info.setDays_remaining(Integer.parseInt(value));
-                                break;
-                            case "hours_remaining":
-                                info.setHours_remaining(Integer.parseInt(value));
-                                break;
-                            case "minutes_remaining":
-                                info.setMinutes_remaining(Integer.parseInt(value));
-                                break;
-                        }
-                    }
-                }
-            }
-            return info;
-        } catch (Exception e) {
-            Log.e("NetworkApi", "Failed to parse license info: " + e.getMessage());
-            return null;
-        }
-    }
 
     /**
      * 检查授权状态

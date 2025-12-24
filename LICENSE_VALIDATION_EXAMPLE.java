@@ -130,7 +130,8 @@ public class LicenseValidationExample {
 
         /**
          * 许可证验证接口
-         * GET /license/?key=ABC123
+         * GET /license/{LICENSE_KEY}
+         * 例如：GET /license/ABC123
          */
         public LicenseInfo validateLicense(String key) {
             LicenseInfo license = LICENSE_DATABASE.get(key);

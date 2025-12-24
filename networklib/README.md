@@ -56,7 +56,8 @@ public class MyAPP extends Application {
 ```
 
 **许可证验证说明：**
-- 初始化时会自动调用 `http://127.0.0.1:8000/license/` 接口验证许可证
+- 初始化时会自动调用 `http://127.0.0.1:8000/license/{LICENSE_KEY}` 接口验证许可证
+- 例如：传入密钥 "ABC123" 时，会调用 `http://127.0.0.1:8000/license/ABC123`
 - 如果许可证过期或验证失败，所有NetworkApi功能将被禁用
 - 验证失败时会抛出 `RuntimeException`
 
