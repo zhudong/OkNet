@@ -45,7 +45,9 @@ public class MyAPP extends Application {
         try {
             // 初始化NetworkApi并验证许可证
             // 许可证密钥需要从服务器获取或硬编码
-            NetworkApi.getInstance().init(this, "ABC123");
+            NetworkApi.getInstance()
+                .setLicenseServerUrl("http://192.168.7.171:8000/license/") // 设置许可证服务器地址
+                .init(this, "ABC123");
         } catch (RuntimeException e) {
             // 许可证验证失败，NetworkApi功能将被禁用
             Log.e("MyApp", "License validation failed", e);
@@ -56,8 +58,10 @@ public class MyAPP extends Application {
 ```
 
 **许可证验证说明：**
-- 初始化时会自动调用 `http://127.0.0.1:8000/license/{LICENSE_KEY}` 接口验证许可证
-- 例如：传入密钥 "ABC123" 时，会调用 `http://127.0.0.1:8000/license/ABC123`
+- 初始化时会自动调用许可证服务器接口验证许可证
+- 默认服务器地址：`http://127.0.0.1:8000/license/`
+- 可以通过 `setLicenseServerUrl()` 方法自定义服务器地址
+- 例如：传入密钥 "ABC123" 时，会调用 `{LICENSE_SERVER_URL}ABC123`
 - 如果许可证过期或验证失败，所有NetworkApi功能将被禁用
 - 验证失败时会抛出 `RuntimeException`
 
@@ -404,7 +408,7 @@ NetworkLib采用`api`配置声明核心依赖，确保所有依赖都会自动�
 
 1. **初始化与授权**：必须在Application中调用`NetworkApi.getInstance().init(this, "LICENSE_KEY")`，内部会自动初始化OkGo并验证许可证
 2. **许可证要求**：需要有效的许可证密钥，过期许可证会导致所有功能不可用
-3. **网络连接**：许可证验证需要网络连接到 `http://127.0.0.1:8000/license/` 接口
+3. **网络连接**：许可证验证需要网络连接到许可证服务器（默认 `http://127.0.0.1:8000/license/`）
 4. **Token处理**：如果需要Token验证，可以在请求时手动添加headers或使用自定义回调
 5. **请求标签**：tag用于取消请求，建议使用Activity或Fragment实例作为tag
 6. **响应处理**：BaseEntity的success判断基于code == 2000，可根据实际情况修改

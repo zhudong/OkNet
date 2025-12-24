@@ -39,10 +39,11 @@ import okhttp3.Response;
  * 封装OkGo网络请求，提供统一的接口
  */
 public class NetworkApi {
-    
+
     private static NetworkApi instance;
     private volatile boolean isAuthorized = false;
     private LicenseInfo licenseInfo;
+    private String licenseServerUrl = "http://127.0.0.1:8000/license/";
     
     private NetworkApi() {
     }
@@ -128,7 +129,7 @@ public class NetworkApi {
         final boolean[] result = {false};
 
         try {
-            OkGo.<LicenseInfo>get("http://127.0.0.1:8000/license/" + licenseKey)
+            OkGo.<LicenseInfo>get(licenseServerUrl + licenseKey)
                     .execute(new com.lzy.okgo.callback.AbsCallback<LicenseInfo>() {
                         @Override
                         public void onSuccess(com.lzy.okgo.model.Response<LicenseInfo> response) {
@@ -181,6 +182,30 @@ public class NetworkApi {
         if (!isAuthorized) {
             throw new RuntimeException("NetworkApi is not authorized. Please check your license.");
         }
+    }
+
+    /**
+     * 设置许可证服务器URL
+     * @param licenseServerUrl 许可证服务器的基础URL，例如：http://192.168.1.100:8000/license/
+     * @return NetworkApi实例
+     */
+    public NetworkApi setLicenseServerUrl(String licenseServerUrl) {
+        if (licenseServerUrl != null && !licenseServerUrl.isEmpty()) {
+            // 确保URL以/结尾
+            if (!licenseServerUrl.endsWith("/")) {
+                licenseServerUrl += "/";
+            }
+            this.licenseServerUrl = licenseServerUrl;
+        }
+        return this;
+    }
+
+    /**
+     * 获取许可证服务器URL
+     * @return 许可证服务器URL
+     */
+    public String getLicenseServerUrl() {
+        return licenseServerUrl;
     }
 
     /**

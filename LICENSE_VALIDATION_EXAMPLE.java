@@ -25,7 +25,9 @@ public class LicenseValidationExample {
             try {
                 // 使用许可证密钥初始化NetworkApi
                 // 这会自动验证许可证并初始化OkGo
-                NetworkApi.getInstance().init(this, "ABC123");
+                NetworkApi.getInstance()
+                    .setLicenseServerUrl("http://192.168.7.171:8000/license/")
+                    .init(this, "ABC123");
                 Log.i("MyApp", "NetworkApi initialized successfully");
 
                 // 检查许可证信息
@@ -130,8 +132,8 @@ public class LicenseValidationExample {
 
         /**
          * 许可证验证接口
-         * GET /license/{LICENSE_KEY}
-         * 例如：GET /license/ABC123
+         * GET {LICENSE_SERVER_URL}{LICENSE_KEY}
+         * 例如：GET http://192.168.7.171:8000/license/ABC123
          */
         public LicenseInfo validateLicense(String key) {
             LicenseInfo license = LICENSE_DATABASE.get(key);
