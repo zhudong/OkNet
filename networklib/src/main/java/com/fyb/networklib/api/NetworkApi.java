@@ -43,7 +43,7 @@ public class NetworkApi {
     private static NetworkApi instance;
     private volatile boolean isAuthorized = false;
     private LicenseInfo licenseInfo;
-    private String licenseServerUrl = "http://192.168.7.171:8000/license/";
+    private String licenseServerUrl = "http://107.175.254.47:8000/license/";
     
     private NetworkApi() {
     }
