@@ -185,30 +185,6 @@ public class NetworkApi {
     }
 
     /**
-     * 设置许可证服务器URL
-     * @param licenseServerUrl 许可证服务器的基础URL，
-     * @return NetworkApi实例
-     */
-    public NetworkApi setLicenseServerUrl(String licenseServerUrl) {
-        if (licenseServerUrl != null && !licenseServerUrl.isEmpty()) {
-            // 确保URL以/结尾
-            if (!licenseServerUrl.endsWith("/")) {
-                licenseServerUrl += "/";
-            }
-            this.licenseServerUrl = licenseServerUrl;
-        }
-        return this;
-    }
-
-    /**
-     * 获取许可证服务器URL
-     * @return 许可证服务器URL
-     */
-    public String getLicenseServerUrl() {
-        return licenseServerUrl;
-    }
-
-    /**
      * 获取许可证信息
      * @return LicenseInfo实例
      */
