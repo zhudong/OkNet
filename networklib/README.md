@@ -4,11 +4,13 @@
 
 ## 功能特性
 
-- 封装OkGo网络请求，提供统一的API接口
-- 支持Token自动注入
-- 支持JSON格式的POST/GET请求
-- 提供回调接口，方便处理请求结果
-- 支持请求取消功能
+- **完全封装OkGo**：提供OkGo所有方法的统一接口，无需直接依赖OkGo
+- **智能初始化**：自动处理OkGo的初始化和配置
+- **Token自动注入**：支持自动Token注入机制
+- **完整的HTTP方法支持**：GET, POST, PUT, DELETE, HEAD, OPTIONS, PATCH, TRACE
+- **灵活的配置选项**：支持自定义OkHttpClient、缓存、重试等
+- **请求取消功能**：支持按标签取消请求或取消所有请求
+- **传递依赖**：核心依赖自动传递，无需手动添加
 
 ## 模块结构
 
@@ -39,56 +41,112 @@ public class MyAPP extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
-        
-        // 初始化OkGo（必须）
-        OkGo.getInstance().init(this);
-        
-        // 初始化网络请求API，设置Token提供者
-        NetworkApi.getInstance().setTokenProvider(new TokenProvider() {
-            @Override
-            public String getAccessToken() {
-                return AccountManager.getInstance().getAccessToken();
-            }
-        });
+
+        // 初始化NetworkApi（内部自动初始化OkGo）
+        NetworkApi.getInstance()
+            .init(this)
+            .setTokenProvider(new TokenProvider() {
+                @Override
+                public String getAccessToken() {
+                    return AccountManager.getInstance().getAccessToken();
+                }
+            });
     }
 }
 ```
 
 ### 2. 使用NetworkApi进行网络请求
 
-```java
-// POST请求 - JSON格式
-NetworkApi.getInstance().postJson(
-    url,
-    jsonBody,
-    new JsonCallback<BaseEntity<YourResponse>>() {
-        @Override
-        public void onSuccess(Response<BaseEntity<YourResponse>> response) {
-            // 处理成功响应
-        }
-        
-        @Override
-        public void onError(Response<BaseEntity<YourResponse>> response) {
-            // 处理错误
-        }
-    },
-    this  // tag，用于取消请求
-);
+NetworkApi完全封装了OkGo的所有功能，提供简洁统一的接口：
 
+#### 基础HTTP请求
+```java
 // GET请求
-Map<String, String> params = new HashMap<>();
-params.put("key", "value");
-NetworkApi.getInstance().get(
-    url,
-    params,
-    new JsonCallback<BaseEntity<YourResponse>>() {
+NetworkApi.get("https://api.example.com/users")
+    .params("page", "1")
+    .execute(new JsonCallback<UserResponse>() {
         @Override
-        public void onSuccess(Response<BaseEntity<YourResponse>> response) {
+        public void onSuccess(Response<UserResponse> response) {
             // 处理成功响应
         }
-    },
-    this
-);
+    });
+
+// POST请求 - JSON格式
+NetworkApi.post("https://api.example.com/users")
+    .upJson("{\"name\":\"张三\",\"age\":25}")
+    .execute(new JsonCallback<UserResponse>() {
+        @Override
+        public void onSuccess(Response<UserResponse> response) {
+            // 处理成功响应
+        }
+    });
+
+// POST请求 - 表单参数
+NetworkApi.post("https://api.example.com/login")
+    .params("username", "user")
+    .params("password", "pass")
+    .execute(new JsonCallback<LoginResponse>() {
+        @Override
+        public void onSuccess(Response<LoginResponse> response) {
+            // 处理成功响应
+        }
+    });
+```
+
+#### 其他HTTP方法
+```java
+// PUT请求
+NetworkApi.put("https://api.example.com/users/1")
+    .upJson("{\"name\":\"李四\"}")
+    .execute(callback);
+
+// DELETE请求
+NetworkApi.delete("https://api.example.com/users/1")
+    .execute(callback);
+
+// HEAD请求
+NetworkApi.head("https://api.example.com/status")
+    .execute(callback);
+
+// OPTIONS请求
+NetworkApi.options("https://api.example.com/cors")
+    .execute(callback);
+
+// PATCH请求
+NetworkApi.patch("https://api.example.com/users/1")
+    .upJson("{\"email\":\"new@email.com\"}")
+    .execute(callback);
+
+// TRACE请求
+NetworkApi.trace("https://api.example.com/debug")
+    .execute(callback);
+```
+
+#### 高级配置
+```java
+// 自定义OkHttpClient
+OkHttpClient customClient = new OkHttpClient.Builder()
+    .connectTimeout(30, TimeUnit.SECONDS)
+    .build();
+
+NetworkApi.getInstance()
+    .setOkHttpClient(customClient)
+    .setRetryCount(5)
+    .setCacheMode(CacheMode.FIRST_CACHE_THEN_REQUEST)
+    .setCacheTime(3600000); // 1小时
+
+// 添加全局参数和请求头
+HttpParams commonParams = new HttpParams();
+commonParams.put("app_version", "1.0.0");
+commonParams.put("platform", "android");
+
+HttpHeaders commonHeaders = new HttpHeaders();
+commonHeaders.put("Authorization", "Bearer token");
+commonHeaders.put("User-Agent", "NetworkLib/1.0");
+
+NetworkApi.getInstance()
+    .addCommonParams(commonParams)
+    .addCommonHeaders(commonHeaders);
 ```
 
 ### 3. 使用业务API（如TripManageApi）
@@ -116,10 +174,14 @@ tripManageApi.addTripManage(
 
 ```java
 // 取消指定tag的请求
-NetworkApi.getInstance().cancel(this);
+NetworkApi.getInstance().cancelTag(this);
 
 // 取消所有请求
 NetworkApi.getInstance().cancelAll();
+
+// 使用静态方法取消（需要OkHttpClient实例）
+NetworkApi.cancelTag(okHttpClient, this);
+NetworkApi.cancelAll(okHttpClient);
 ```
 
 ## 打包成AAR（推荐）
@@ -277,19 +339,25 @@ dependencies {
 
 ## 依赖说明
 
-本模块依赖以下库：
+NetworkLib采用`api`配置声明核心依赖，确保所有依赖都会自动传递给使用此库的项目：
 
+### 自动传递的依赖
 - `com.lzy.net:okgo:3.0.4` - OkGo网络请求库
 - `com.lzy.net:okserver:2.0.5` - OkGo服务器库
 - `com.google.code.gson:gson:2.8.1` - JSON解析库
-- `androidx.appcompat:appcompat:1.6.1` - Android支持库
+
+### 内部依赖（不传递）
+- `androidx.appcompat:appcompat:1.6.1` - Android支持库（implementation配置）
+
+**优势**：使用NetworkLib的项目无需手动添加OkGo、Gson等依赖，大大简化了依赖管理。
 
 ## 注意事项
 
-1. 使用前必须初始化OkGo（在Application中）
-2. 必须设置TokenProvider以支持自动Token注入
-3. 请求的tag用于取消请求，建议使用Activity或Fragment实例
-4. BaseEntity的success判断基于code == 2000，可根据实际情况修改
+1. **初始化**：必须在Application中调用`NetworkApi.getInstance().init(this)`
+2. **TokenProvider**：建议设置TokenProvider以支持自动Token注入
+3. **请求标签**：tag用于取消请求，建议使用Activity或Fragment实例作为tag
+4. **响应处理**：BaseEntity的success判断基于code == 2000，可根据实际情况修改
+5. **线程安全**：所有NetworkApi方法都是线程安全的
 
 ## 扩展
 
