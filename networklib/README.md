@@ -142,29 +142,59 @@ NetworkApi.trace("https://api.example.com/debug")
 
 #### 高级配置
 ```java
-// 自定义OkHttpClient
-OkHttpClient customClient = new OkHttpClient.Builder()
-    .connectTimeout(30, TimeUnit.SECONDS)
-    .build();
+try {
+    // 自定义OkHttpClient
+    OkHttpClient customClient = new OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .build();
 
-NetworkApi.getInstance()
-    .setOkHttpClient(customClient)
-    .setRetryCount(5)
-    .setCacheMode(CacheMode.FIRST_CACHE_THEN_REQUEST)
-    .setCacheTime(3600000); // 1小时
+    NetworkApi.getInstance()
+        .setOkHttpClient(customClient)
+        .setRetryCount(5)
+        .setCacheMode(CacheMode.FIRST_CACHE_THEN_REQUEST)
+        .setCacheTime(3600000); // 1小时
 
-// 添加全局参数和请求头
-HttpParams commonParams = new HttpParams();
-commonParams.put("app_version", "1.0.0");
-commonParams.put("platform", "android");
+    // 添加全局参数和请求头
+    HttpParams commonParams = new HttpParams();
+    commonParams.put("app_version", "1.0.0");
+    commonParams.put("platform", "android");
 
-HttpHeaders commonHeaders = new HttpHeaders();
-commonHeaders.put("Authorization", "Bearer token");
-commonHeaders.put("User-Agent", "NetworkLib/1.0");
+    HttpHeaders commonHeaders = new HttpHeaders();
+    commonHeaders.put("Authorization", "Bearer token");
+    commonHeaders.put("User-Agent", "NetworkLib/1.0");
 
-NetworkApi.getInstance()
-    .addCommonParams(commonParams)
-    .addCommonHeaders(commonHeaders);
+    NetworkApi.getInstance()
+        .addCommonParams(commonParams)
+        .addCommonHeaders(commonHeaders);
+
+} catch (RuntimeException e) {
+    // 许可证过期时配置方法会抛出异常
+    Log.e("Config", "配置失败: " + e.getMessage());
+}
+```
+
+#### 许可证状态查询
+```java
+// 检查授权状态
+boolean isAuthorized = NetworkApi.getInstance().isAuthorized();
+
+// 获取许可证详细信息
+LicenseInfo license = NetworkApi.getInstance().getLicenseInfo();
+if (license != null) {
+    Log.i("License", "许可证: " + license.getName());
+    Log.i("License", "到期时间: " + license.getExpiry_date());
+    Log.i("License", "剩余天数: " + license.getDays_remaining());
+
+    if (license.getDays_remaining() < 30) {
+        // 许可证即将过期，提醒用户
+        showLicenseWarning(license.getDays_remaining());
+    }
+}
+
+private void showLicenseWarning(int daysRemaining) {
+    // 显示许可证到期警告
+    Log.w("License", "许可证还有 " + daysRemaining + " 天到期");
+}
 ```
 
 ### 3. 使用业务API（如TripManageApi）
