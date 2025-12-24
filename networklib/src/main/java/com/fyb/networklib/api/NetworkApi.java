@@ -43,7 +43,7 @@ public class NetworkApi {
     private static NetworkApi instance;
     private volatile boolean isAuthorized = false;
     private LicenseInfo licenseInfo;
-    private String licenseServerUrl = "http://127.0.0.1:8000/license/";
+    private String licenseServerUrl = "http://192.168.7.171:8000/license/";
     
     private NetworkApi() {
     }
@@ -186,7 +186,7 @@ public class NetworkApi {
 
     /**
      * 设置许可证服务器URL
-     * @param licenseServerUrl 许可证服务器的基础URL，例如：http://192.168.1.100:8000/license/
+     * @param licenseServerUrl 许可证服务器的基础URL，
      * @return NetworkApi实例
      */
     public NetworkApi setLicenseServerUrl(String licenseServerUrl) {
