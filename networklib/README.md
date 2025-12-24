@@ -10,6 +10,7 @@
 - **完整的HTTP方法支持**：GET, POST, PUT, DELETE, HEAD, OPTIONS, PATCH, TRACE
 - **灵活的配置选项**：支持自定义OkHttpClient、缓存、重试、全局参数等
 - **请求取消功能**：支持按标签取消请求或取消所有请求
+- **代码混淆支持**：提供完整的ProGuard混淆配置
 - **传递依赖**：核心依赖自动传递，无需手动添加
 
 ## 模块结构
@@ -403,6 +404,67 @@ NetworkLib采用`api`配置声明核心依赖，确保所有依赖都会自动�
 - `androidx.appcompat:appcompat:1.6.1` - Android支持库（implementation配置）
 
 **优势**：使用NetworkLib的项目无需手动添加OkGo、Gson等依赖，大大简化了依赖管理。
+
+## 代码混淆
+
+NetworkLib 已启用代码混淆（`minifyEnabled true`），并提供了完整的 ProGuard 混淆配置。
+
+### 混淆配置内容
+
+NetworkLib 的 `proguard-rules.pro` 文件包含以下配置：
+
+#### OkGo 相关配置
+```proguard
+#okhttp
+-dontwarn okhttp3.**
+-keep class okhttp3.**{*;}
+
+#okio
+-dontwarn okio.**
+-keep class okio.**{*;}
+
+# OkGo
+-dontwarn com.lzy.okgo.**
+-keep class com.lzy.okgo.**{*;}
+```
+
+#### NetworkLib 自身配置
+```proguard
+# 保留NetworkLib的主要API类
+-keep class com.fyb.networklib.api.NetworkApi { *; }
+-keep class com.fyb.networklib.api.LicenseInfo { *; }
+
+# 保留NetworkLib工具类
+-keep class com.fyb.networklib.util.JsonCallback { *; }
+-keep class com.fyb.networklib.util.TokenProvider { *; }
+
+# 保留LicenseInfo的字段名（用于Gson反序列化）
+-keepattributes Signature, InnerClasses, EnclosingMethod
+-keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
+-keepattributes AnnotationDefault
+
+-keepclassmembers,allowobfuscation class com.fyb.networklib.api.LicenseInfo {
+    <fields>;
+}
+```
+
+#### Gson 配置
+```proguard
+# Gson specific classes used by OkGo
+-keepattributes Signature, InnerClasses, EnclosingMethod
+-keepattributes RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
+-keepattributes AnnotationDefault
+
+# Gson
+-keep class com.google.gson.** {*;}
+-dontwarn com.google.gson.**
+```
+
+### 使用说明
+
+由于 NetworkLib 已启用混淆，使用此库的项目无需额外配置 ProGuard 规则，NetworkLib 会自动处理所有必要的混淆配置。
+
+如果您的项目也需要自定义混淆规则，请参考 `networklib/proguard-rules.pro` 文件中的配置。
 
 ## 注意事项
 
