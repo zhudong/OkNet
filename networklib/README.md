@@ -5,7 +5,8 @@
 ## 功能特性
 
 - **完全封装OkGo**：提供OkGo所有方法的统一接口，无需直接依赖OkGo
-- **一键初始化**：在Application中只需一行代码完成所有初始化
+- **许可证授权验证**：初始化时自动验证许可证，确保功能安全可用
+- **一键初始化**：在Application中传入许可证密钥完成所有初始化
 - **完整的HTTP方法支持**：GET, POST, PUT, DELETE, HEAD, OPTIONS, PATCH, TRACE
 - **灵活的配置选项**：支持自定义OkHttpClient、缓存、重试、全局参数等
 - **请求取消功能**：支持按标签取消请求或取消所有请求
@@ -41,10 +42,35 @@ public class MyAPP extends Application {
     public void onCreate() {
         super.onCreate();
 
-        // 初始化NetworkApi（内部自动初始化OkGo并设置默认配置）
-        NetworkApi.getInstance().init(this);
+        try {
+            // 初始化NetworkApi并验证许可证
+            // 许可证密钥需要从服务器获取或硬编码
+            NetworkApi.getInstance().init(this, "ABC123");
+        } catch (RuntimeException e) {
+            // 许可证验证失败，NetworkApi功能将被禁用
+            Log.e("MyApp", "License validation failed", e);
+            // 可以在这里处理许可证过期的情况
+        }
     }
 }
+```
+
+**许可证验证说明：**
+- 初始化时会自动调用 `http://127.0.0.1:8000/license/` 接口验证许可证
+- 如果许可证过期或验证失败，所有NetworkApi功能将被禁用
+- 验证失败时会抛出 `RuntimeException`
+
+**许可证信息查询：**
+```java
+// 获取许可证信息
+LicenseInfo license = NetworkApi.getInstance().getLicenseInfo();
+if (license != null) {
+    Log.i("License", "过期时间: " + license.getExpiry_date());
+    Log.i("License", "剩余天数: " + license.getDays_remaining());
+}
+
+// 检查授权状态
+boolean isAuthorized = NetworkApi.getInstance().isAuthorized();
 ```
 
 ### 2. 使用NetworkApi进行网络请求
@@ -345,11 +371,13 @@ NetworkLib采用`api`配置声明核心依赖，确保所有依赖都会自动�
 
 ## 注意事项
 
-1. **初始化**：必须在Application中调用`NetworkApi.getInstance().init(this)`，内部会自动初始化OkGo
-2. **Token处理**：如果需要Token验证，可以在请求时手动添加headers或使用自定义回调
-3. **请求标签**：tag用于取消请求，建议使用Activity或Fragment实例作为tag
-4. **响应处理**：BaseEntity的success判断基于code == 2000，可根据实际情况修改
-5. **线程安全**：所有NetworkApi方法都是线程安全的
+1. **初始化与授权**：必须在Application中调用`NetworkApi.getInstance().init(this, "LICENSE_KEY")`，内部会自动初始化OkGo并验证许可证
+2. **许可证要求**：需要有效的许可证密钥，过期许可证会导致所有功能不可用
+3. **网络连接**：许可证验证需要网络连接到 `http://127.0.0.1:8000/license/` 接口
+4. **Token处理**：如果需要Token验证，可以在请求时手动添加headers或使用自定义回调
+5. **请求标签**：tag用于取消请求，建议使用Activity或Fragment实例作为tag
+6. **响应处理**：BaseEntity的success判断基于code == 2000，可根据实际情况修改
+7. **线程安全**：所有NetworkApi方法都是线程安全的
 
 ## 扩展
 

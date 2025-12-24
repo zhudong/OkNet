@@ -3,6 +3,7 @@ package com.fyb.networklib.api;
 import android.app.Application;
 import android.content.Context;
 import android.os.Handler;
+import android.util.Log;
 
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.cache.CacheEntity;
@@ -23,23 +24,28 @@ import com.lzy.okgo.request.TraceRequest;
 import com.lzy.okgo.request.base.Request;
 import com.fyb.networklib.util.JsonCallback;
 
+import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import okhttp3.OkHttpClient;
+import okhttp3.Response;
 
 /**
  * 网络请求API封装类
  * 封装OkGo网络请求，提供统一的接口
  */
 public class NetworkApi {
-
+    
     private static NetworkApi instance;
-
+    private volatile boolean isAuthorized = false;
+    private LicenseInfo licenseInfo;
+    
     private NetworkApi() {
     }
-
+    
     public static NetworkApi getInstance() {
         if (instance == null) {
             synchronized (NetworkApi.class) {
@@ -50,15 +56,37 @@ public class NetworkApi {
         }
         return instance;
     }
-
+    
     /**
      * 初始化NetworkApi（必须在Application中调用）
-     * 内部自动初始化OkGo并设置默认配置
+     * 内部自动初始化OkGo并设置默认配置，同时验证许可证
      * @param app Application实例
+     * @param licenseKey 许可证密钥
      * @return NetworkApi实例
+     * @throws RuntimeException 如果许可证验证失败
      */
+    public NetworkApi init(Application app, String licenseKey) {
+        // 先初始化OkGo
+        initOkGo(app);
+
+        // 验证许可证
+        if (!validateLicense(licenseKey)) {
+            throw new RuntimeException("License validation failed. NetworkApi functionality is disabled.");
+        }
+
+        isAuthorized = true;
+        return this;
+    }
+
+    /**
+     * 初始化NetworkApi（兼容旧版本，不进行许可证验证）
+     * @deprecated 请使用 init(Application, String) 方法
+     */
+    @Deprecated
     public NetworkApi init(Application app) {
         initOkGo(app);
+        isAuthorized = true; // 兼容旧版本，默认授权
+        Log.w("NetworkApi", "Using deprecated init method without license validation");
         return this;
     }
 
@@ -74,10 +102,10 @@ public class NetworkApi {
         loggingInterceptor.setColorLevel(Level.INFO);
         builder.addInterceptor(loggingInterceptor);
 
-        // Global timeout
-        builder.readTimeout(OkGo.DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
-        builder.writeTimeout(OkGo.DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
-        builder.connectTimeout(OkGo.DEFAULT_MILLISECONDS, TimeUnit.MILLISECONDS);
+        // Global timeout - 使用较短的超时时间用于license验证
+        builder.readTimeout(10000, TimeUnit.MILLISECONDS);
+        builder.writeTimeout(10000, TimeUnit.MILLISECONDS);
+        builder.connectTimeout(10000, TimeUnit.MILLISECONDS);
 
         // Cookie management
         builder.cookieJar(new CookieJarImpl(new SPCookieStore(application)));
@@ -86,7 +114,141 @@ public class NetworkApi {
                 .setOkHttpClient(builder.build())
                 .setCacheMode(CacheMode.NO_CACHE)
                 .setCacheTime(CacheEntity.CACHE_NEVER_EXPIRE)
-                .setRetryCount(3);
+                .setRetryCount(1); // license验证时减少重试次数
+    }
+
+    /**
+     * 验证许可证
+     * @param licenseKey 许可证密钥
+     * @return 是否验证成功
+     */
+    private boolean validateLicense(String licenseKey) {
+        final CountDownLatch latch = new CountDownLatch(1);
+        final boolean[] result = {false};
+
+        try {
+            OkGo.<LicenseInfo>get("http://127.0.0.1:8000/license/")
+                    .params("key", licenseKey)
+                    .execute(new com.lzy.okgo.callback.AbsCallback<LicenseInfo>() {
+                        @Override
+                        public void onSuccess(com.lzy.okgo.model.Response<LicenseInfo> response) {
+                            LicenseInfo info = response.body();
+                            if (info != null) {
+                                licenseInfo = info;
+                                result[0] = !info.isIs_expired();
+                                Log.i("NetworkApi", "License validated: " + info.toString());
+                            } else {
+                                Log.e("NetworkApi", "License validation failed: empty response");
+                            }
+                            latch.countDown();
+                        }
+
+                        @Override
+                        public void onError(com.lzy.okgo.model.Response<LicenseInfo> response) {
+                            Log.e("NetworkApi", "License validation failed: " + response.getException().getMessage());
+                            latch.countDown();
+                        }
+
+                        @Override
+                        public LicenseInfo convertResponse(Response response) throws Throwable {
+                            // 简单的JSON解析，如果复杂可以改用Gson
+                            String json = response.body().string();
+                            // 这里为了简化，我们假设服务器返回正确的JSON格式
+                            // 在实际项目中，应该使用Gson或其他JSON库进行解析
+                            return parseLicenseInfo(json);
+                        }
+                    });
+
+            // 等待验证结果，最多等待10秒
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                Log.e("NetworkApi", "License validation timeout");
+                return false;
+            }
+
+            return result[0];
+
+        } catch (Exception e) {
+            Log.e("NetworkApi", "License validation exception: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 简单的JSON解析（生产环境中建议使用Gson）
+     */
+    private LicenseInfo parseLicenseInfo(String json) {
+        try {
+            LicenseInfo info = new LicenseInfo();
+            // 简单解析 - 实际项目中应该使用JSON库
+            json = json.trim();
+            if (json.startsWith("{") && json.endsWith("}")) {
+                // 移除花括号
+                String content = json.substring(1, json.length() - 1);
+                String[] pairs = content.split(",");
+
+                for (String pair : pairs) {
+                    String[] keyValue = pair.split(":", 2);
+                    if (keyValue.length == 2) {
+                        String key = keyValue[0].trim().replaceAll("\"", "");
+                        String value = keyValue[1].trim().replaceAll("\"", "");
+
+                        switch (key) {
+                            case "key":
+                                info.setKey(value);
+                                break;
+                            case "name":
+                                info.setName(value);
+                                break;
+                            case "expiry_date":
+                                info.setExpiry_date(value);
+                                break;
+                            case "is_expired":
+                                info.setIs_expired(Boolean.parseBoolean(value));
+                                break;
+                            case "days_remaining":
+                                info.setDays_remaining(Integer.parseInt(value));
+                                break;
+                            case "hours_remaining":
+                                info.setHours_remaining(Integer.parseInt(value));
+                                break;
+                            case "minutes_remaining":
+                                info.setMinutes_remaining(Integer.parseInt(value));
+                                break;
+                        }
+                    }
+                }
+            }
+            return info;
+        } catch (Exception e) {
+            Log.e("NetworkApi", "Failed to parse license info: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 检查授权状态
+     * @throws RuntimeException 如果未授权
+     */
+    private void checkAuthorization() {
+        if (!isAuthorized) {
+            throw new RuntimeException("NetworkApi is not authorized. Please check your license.");
+        }
+    }
+
+    /**
+     * 获取许可证信息
+     * @return LicenseInfo实例
+     */
+    public LicenseInfo getLicenseInfo() {
+        return licenseInfo;
+    }
+
+    /**
+     * 检查是否已授权
+     * @return 是否已授权
+     */
+    public boolean isAuthorized() {
+        return isAuthorized;
     }
 
     /**
@@ -95,6 +257,7 @@ public class NetworkApi {
      * @return NetworkApi实例
      */
     public NetworkApi setOkHttpClient(OkHttpClient okHttpClient) {
+        checkAuthorization();
         OkGo.getInstance().setOkHttpClient(okHttpClient);
         return this;
     }
@@ -104,6 +267,7 @@ public class NetworkApi {
      * @return OkHttpClient实例
      */
     public OkHttpClient getOkHttpClient() {
+        checkAuthorization();
         return OkGo.getInstance().getOkHttpClient();
     }
 
@@ -112,6 +276,7 @@ public class NetworkApi {
      * @return Context实例
      */
     public Context getContext() {
+        checkAuthorization();
         return OkGo.getInstance().getContext();
     }
 
@@ -120,6 +285,7 @@ public class NetworkApi {
      * @return Handler实例
      */
     public Handler getDelivery() {
+        checkAuthorization();
         return OkGo.getInstance().getDelivery();
     }
 
@@ -128,6 +294,7 @@ public class NetworkApi {
      * @return CookieJarImpl实例
      */
     public CookieJarImpl getCookieJar() {
+        checkAuthorization();
         return OkGo.getInstance().getCookieJar();
     }
 
@@ -137,6 +304,7 @@ public class NetworkApi {
      * @return NetworkApi实例
      */
     public NetworkApi setRetryCount(int retryCount) {
+        checkAuthorization();
         OkGo.getInstance().setRetryCount(retryCount);
         return this;
     }
@@ -146,6 +314,7 @@ public class NetworkApi {
      * @return 重试次数
      */
     public int getRetryCount() {
+        checkAuthorization();
         return OkGo.getInstance().getRetryCount();
     }
 
@@ -155,6 +324,7 @@ public class NetworkApi {
      * @return NetworkApi实例
      */
     public NetworkApi setCacheMode(CacheMode cacheMode) {
+        checkAuthorization();
         OkGo.getInstance().setCacheMode(cacheMode);
         return this;
     }
@@ -164,6 +334,7 @@ public class NetworkApi {
      * @return 缓存模式
      */
     public CacheMode getCacheMode() {
+        checkAuthorization();
         return OkGo.getInstance().getCacheMode();
     }
 
@@ -173,6 +344,7 @@ public class NetworkApi {
      * @return NetworkApi实例
      */
     public NetworkApi setCacheTime(long cacheTime) {
+        checkAuthorization();
         OkGo.getInstance().setCacheTime(cacheTime);
         return this;
     }
@@ -182,6 +354,7 @@ public class NetworkApi {
      * @return 缓存时间（毫秒）
      */
     public long getCacheTime() {
+        checkAuthorization();
         return OkGo.getInstance().getCacheTime();
     }
 
@@ -191,6 +364,7 @@ public class NetworkApi {
      * @return NetworkApi实例
      */
     public NetworkApi addCommonParams(HttpParams commonParams) {
+        checkAuthorization();
         OkGo.getInstance().addCommonParams(commonParams);
         return this;
     }
@@ -200,6 +374,7 @@ public class NetworkApi {
      * @return HttpParams实例
      */
     public HttpParams getCommonParams() {
+        checkAuthorization();
         return OkGo.getInstance().getCommonParams();
     }
 
@@ -209,6 +384,7 @@ public class NetworkApi {
      * @return NetworkApi实例
      */
     public NetworkApi addCommonHeaders(HttpHeaders commonHeaders) {
+        checkAuthorization();
         OkGo.getInstance().addCommonHeaders(commonHeaders);
         return this;
     }
@@ -218,6 +394,7 @@ public class NetworkApi {
      * @return HttpHeaders实例
      */
     public HttpHeaders getCommonHeaders() {
+        checkAuthorization();
         return OkGo.getInstance().getCommonHeaders();
     }
     
@@ -318,6 +495,7 @@ public class NetworkApi {
      */
     public <T> Request<T, ? extends Request> postJson(String url, String jsonBody,
                                                        JsonCallback<T> callback, Object tag) {
+        checkAuthorization();
         Request<T, ? extends Request> request = OkGo.<T>post(url)
                 .tag(tag)
                 .upJson(jsonBody);
@@ -336,6 +514,7 @@ public class NetworkApi {
      */
     public <T> Request<T, ? extends Request> post(String url, Map<String, String> params,
                                                    JsonCallback<T> callback, Object tag) {
+        checkAuthorization();
         Request<T, ? extends Request> request = OkGo.<T>post(url)
                 .tag(tag)
                 .params(params);
@@ -354,6 +533,7 @@ public class NetworkApi {
      */
     public <T> Request<T, ? extends Request> get(String url, Map<String, String> params,
                                                  JsonCallback<T> callback, Object tag) {
+        checkAuthorization();
         Request<T, ? extends Request> request = OkGo.<T>get(url).tag(tag);
         if (params != null && !params.isEmpty()) {
             for (Map.Entry<String, String> entry : params.entrySet()) {
@@ -371,6 +551,7 @@ public class NetworkApi {
      * @param tag 请求标签
      */
     public void cancelTag(Object tag) {
+        checkAuthorization();
         OkGo.getInstance().cancelTag(tag);
     }
 
@@ -387,6 +568,7 @@ public class NetworkApi {
      * 取消所有请求
      */
     public void cancelAll() {
+        checkAuthorization();
         OkGo.getInstance().cancelAll();
     }
 
@@ -405,6 +587,7 @@ public class NetworkApi {
      * @param tag 请求标签
      */
     public void cancel(Object tag) {
+        checkAuthorization();
         cancelTag(tag);
     }
 
