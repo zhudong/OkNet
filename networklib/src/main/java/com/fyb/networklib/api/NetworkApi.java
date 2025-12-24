@@ -103,7 +103,7 @@ public class NetworkApi {
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor("OkGo");
         loggingInterceptor.setPrintLevel(HttpLoggingInterceptor.Level.BODY);
         loggingInterceptor.setColorLevel(Level.INFO);
-        builder.addInterceptor(loggingInterceptor);
+//        builder.addInterceptor(loggingInterceptor);
 
         // Global timeout - 使用较短的超时时间用于license验证
         builder.readTimeout(10000, TimeUnit.MILLISECONDS);
