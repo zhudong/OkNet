@@ -430,13 +430,24 @@ NetworkLib 的 `proguard-rules.pro` 文件包含以下配置：
 
 #### NetworkLib 自身配置
 ```proguard
-# 保留NetworkLib的主要API类
--keep class com.fyb.networklib.api.NetworkApi { *; }
--keep class com.fyb.networklib.api.LicenseInfo { *; }
+# 保留NetworkLib的主要API类 - 只保留public方法和字段
+-keep class com.fyb.networklib.api.NetworkApi {
+    public <methods>;
+    public <fields>;
+}
+-keep class com.fyb.networklib.api.LicenseInfo {
+    public <methods>;
+    public <fields>;
+}
 
-# 保留NetworkLib工具类
--keep class com.fyb.networklib.util.JsonCallback { *; }
--keep class com.fyb.networklib.util.TokenProvider { *; }
+# 保留NetworkLib工具类 - 只保留必要的方法签名
+-keep class com.fyb.networklib.util.JsonCallback {
+    public <init>(...);
+    public <methods>;
+}
+-keep class com.fyb.networklib.util.TokenProvider {
+    public <methods>;
+}
 
 # 保留LicenseInfo的字段名（用于Gson反序列化）
 -keepattributes Signature, InnerClasses, EnclosingMethod
@@ -446,6 +457,15 @@ NetworkLib 的 `proguard-rules.pro` 文件包含以下配置：
 -keepclassmembers,allowobfuscation class com.fyb.networklib.api.LicenseInfo {
     <fields>;
 }
+```
+
+#### Consumer配置（consumer-rules.pro）
+```proguard
+# Consumer ProGuard rules for NetworkLib
+# 这些规则会被使用NetworkLib的项目继承
+-keep class com.fyb.networklib.api.NetworkApi { *; }
+-keep class com.fyb.networklib.api.LicenseInfo { *; }
+-keep class com.fyb.networklib.data.BaseEntity { *; }
 ```
 
 #### Gson 配置
@@ -462,9 +482,45 @@ NetworkLib 的 `proguard-rules.pro` 文件包含以下配置：
 
 ### 使用说明
 
+### 源码保护策略
+
+Android Library的源码保护需要平衡**可用性**和**安全性**：
+
+#### 当前策略：API可见，源码混淆
+- ✅ **API可用性**：保留方法签名，IDE提供完整代码提示
+- ✅ **基础保护**：内部实现被混淆，方法名如`a()`、`b()`难以理解
+- ⚠️ **源码可见**：类结构和基本逻辑仍然可见
+
+#### 进一步保护选项
+
+##### 方案A：移除Sources JAR
+不在Maven发布中包含sources.jar，让IDE无法显示源码：
+```gradle
+// 在publications中移除sources artifact
+mavenJava(MavenPublication) {
+    // 移除 artifact tasks.named('sourcesJar')
+}
+```
+
+##### 方案B：商业级保护
+对于商业产品，可以考虑：
+- 核心算法移到JNI层
+- 使用代码加密工具
+- 服务端API化，客户端只保留接口
+
+#### 保护效果说明
+
+使用NetworkLib的项目会看到：
+- ✅ 清晰的API：`NetworkApi.get()`, `NetworkApi.post()`等
+- ✅ 完整的文档：所有public方法的签名和注释
+- ⚠️ 混淆的实现：内部方法被重命名，如`private void a(String b)`而不是`private void validateLicense(String key)`
+- ⚠️ 无法复制：混淆后的逻辑难以直接复制使用
+
+### 使用说明
+
 由于 NetworkLib 已启用混淆，使用此库的项目无需额外配置 ProGuard 规则，NetworkLib 会自动处理所有必要的混淆配置。
 
-如果您的项目也需要自定义混淆规则，请参考 `networklib/proguard-rules.pro` 文件中的配置。
+如果您的项目也需要自定义混淆规则，请参考 `networklib/proguard-rules.pro` 和 `consumer-rules.pro` 文件中的配置。
 
 ## 注意事项
 

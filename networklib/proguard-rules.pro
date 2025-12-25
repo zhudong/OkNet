@@ -4,13 +4,24 @@
 
 # ============= NetworkLib 混淆配置 =============
 
-# 保留NetworkLib的主要API类
--keep class com.fyb.networklib.api.NetworkApi { *; }
--keep class com.fyb.networklib.api.LicenseInfo { *; }
+# 保留NetworkLib的主要API类 - 只保留public方法和字段，不保留实现细节
+-keep class com.fyb.networklib.api.NetworkApi {
+    public <methods>;
+    public <fields>;
+}
+-keep class com.fyb.networklib.api.LicenseInfo {
+    public <methods>;
+    public <fields>;
+}
 
-# 保留NetworkLib工具类
--keep class com.fyb.networklib.util.JsonCallback { *; }
--keep class com.fyb.networklib.util.TokenProvider { *; }
+# 保留NetworkLib工具类 - 只保留必要的方法签名
+-keep class com.fyb.networklib.util.JsonCallback {
+    public <init>(...);
+    public <methods>;
+}
+-keep class com.fyb.networklib.util.TokenProvider {
+    public <methods>;
+}
 
 # 保留LicenseInfo的字段名（用于Gson反序列化）
 -keepattributes Signature, InnerClasses, EnclosingMethod
