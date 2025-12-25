@@ -42,9 +42,28 @@ public class NetworkApi {
     private static NetworkApi instance;
     private static volatile boolean isAuthorized = false;
     private LicenseInfo licenseInfo;
-    private String licenseServerUrl = "http://107.175.254.47:8000/license/";
+    private String licenseServerUrl = a("687474703a2f2f3130372e3137352e3235342e34373a383030302f6c6963656e73652f");
 
     private NetworkApi() {
+    }
+
+    /**
+     * 解码十六进制字符串为普通字符串
+     * @param hex 十六进制字符串
+     * @return 解码后的字符串
+     */
+    private static String a(String hex) {
+        try {
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < hex.length(); i += 2) {
+                String str = hex.substring(i, i + 2);
+                result.append((char) Integer.parseInt(str, 16));
+            }
+            return result.toString();
+        } catch (Exception e) {
+            // 如果解码失败，返回默认URL
+            return "http://127.0.0.1:8000/license/";
+        }
     }
 
     public static NetworkApi getInstance() {
