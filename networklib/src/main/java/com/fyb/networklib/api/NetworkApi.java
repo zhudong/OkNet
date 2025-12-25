@@ -48,20 +48,16 @@ public class NetworkApi {
     }
 
     /**
-     * 解码十六进制字符串为普通字符串
-     * @param hex 十六进制字符串
-     * @return 解码后的字符串
+     * 解码十六进制字符串
      */
     private static String a(String hex) {
         try {
-            StringBuilder result = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < hex.length(); i += 2) {
-                String str = hex.substring(i, i + 2);
-                result.append((char) Integer.parseInt(str, 16));
+                sb.append((char) Integer.parseInt(hex.substring(i, i + 2), 16));
             }
-            return result.toString();
+            return sb.toString();
         } catch (Exception e) {
-            // 如果解码失败，返回默认URL
             return "http://127.0.0.1:8000/license/";
         }
     }

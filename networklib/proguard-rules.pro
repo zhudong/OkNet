@@ -4,11 +4,17 @@
 
 # ============= NetworkLib 混淆配置 =============
 
-# 保留NetworkLib的主要API类 - 只保留public方法和字段，不保留实现细节
+# 商业保护：保留API但深度混淆实现
 -keep class com.fyb.networklib.api.NetworkApi {
+    public static <methods>;
+    public <init>();
     public <methods>;
     public <fields>;
 }
+
+# 混淆私有方法和内部实现
+-allowaccessmodification
+-repackageclasses 'com.fyb.networklib.api'
 -keep class com.fyb.networklib.api.LicenseInfo {
     public <methods>;
     public <fields>;
@@ -41,6 +47,18 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+
+# 商业保护：深度混淆配置
+-optimizationpasses 5
+-overloadaggressively
+-repackageclasses 'com.fyb.networklib'
+
+# 移除调试信息
+-renamesourcefileattribute SourceFile
+-keepattributes Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,*Annotation*,EnclosingMethod
+
+# 混淆字符串常量（可选，会影响性能）
+#-obfuscateStrings
 
 # ============= OkGo 混淆配置 =============
 
