@@ -14,6 +14,10 @@
     public <fields>;
 }
 
+# 保留NetworkLib数据模型类（商业保护：保留API但混淆实现）
+-keep class com.fyb.networklib.data.BaseEntity { *; }
+-keep class com.fyb.networklib.data.** { *; }
+
 # 保留NetworkLib工具类 - 只保留必要的方法签名
 -keep class com.fyb.networklib.util.JsonCallback {
     public <init>(...);

@@ -53,12 +53,12 @@ def libraryVersion = android.defaultConfig.versionName
 def libraryGroupId = 'com.fyb'
 def libraryArtifactId = 'networklib'
 
-// ========== Sources JAR 生成 ==========
-task sourcesJar(type: Jar) {
-    archiveClassifier = 'sources'
-    from android.sourceSets.main.java.srcDirs
-    from android.sourceSets.main.kotlin.srcDirs
-}
+// ========== Sources JAR 生成（商业保护：不发布源码）==========
+// task sourcesJar(type: Jar) {
+//     archiveClassifier = 'sources'
+//     from android.sourceSets.main.java.srcDirs
+//     from android.sourceSets.main.kotlin.srcDirs
+// }
 
 publishing {
     publications {
@@ -70,8 +70,8 @@ publishing {
             // 发布 AAR 文件
             artifact("$buildDir/outputs/aar/${project.getName()}-release.aar")
 
-            // 添加 sources jar
-            artifact tasks.named('sourcesJar')
+            // 商业保护：移除sources jar，不让使用者看到源码
+            // artifact tasks.named('sourcesJar')
 
             // POM 配置
             pom {
